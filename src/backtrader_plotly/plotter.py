@@ -166,12 +166,27 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
 
         figs = []
         for numfig in range(numfigs):
+
+            # specs = [[{'secondary_y': True}] for _ in range(self.pinf.nrows)]
+            specs = []
+            rowmap = {}
+            for i, r in enumerate(self.pinf.rowspan):
+                cumspan = sum(self.pinf.rowspan[:i+1])
+                specs.append([{'secondary_y': True, 'rowspan': r}])
+                rowmap[cumspan] = cumspan - r + 1
+                while r > 1:
+                    specs.append([None])
+                    r -= 1
+
+            self.pinf.rowmap = rowmap
+
             self.fig = make_subplots(rows=self.pinf.nrows,
                                      cols=1,
                                      shared_xaxes=True,
                                      vertical_spacing=0.02,
-                                     specs=[[{'secondary_y': True}] for _ in range(self.pinf.nrows)],
+                                     specs=specs,
                                      )
+
             figs.append(self.fig)
 
             self.pinf.pstart, self.pinf.pend, self.pinf.psize = pranges[numfig]
@@ -238,6 +253,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
         self.pinf.row += rowspan
 
         ax = self.pinf.row  # ax is column no. (1-indexed)
+        ax = self.pinf.rowmap.get(ax, ax)
 
         # update the sharex information if not available
         if self.pinf.sharex is None:
@@ -653,6 +669,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
         rowsmajor = self.pinf.sch.rowsmajor
         rowsminor = self.pinf.sch.rowsminor
         nrows = 0
+        rowspan = []
 
         datasnoplot = 0
         for data in strategy.datas:
@@ -674,23 +691,30 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
                 else:
                     # data adds rows, volume may
                     nrows += rowsmajor
+                    rowspan.append(rowsmajor)
                     if self.pinf.sch.volume and not self.pinf.sch.voloverlay:
                         nrows += 0  # volume never adds row in Plotly subplot
 
         if False:
             # Datas and volumes
             nrows += (len(strategy.datas) - datasnoplot) * rowsmajor
+            rowspan.extend([rowsmajor for _ in range(len(strategy.datas) - datasnoplot)])
             if self.pinf.sch.volume and not self.pinf.sch.voloverlay:
                 nrows += (len(strategy.datas) - datasnoplot) * rowsminor
+                rowspan.extend([rowsminor for _ in range(len(strategy.datas) - datasnoplot)])
 
         # top indicators/observers
         nrows += len(self.dplotstop)
+        rowspan = [1 for _ in self.dplotstop] + rowspan
 
         # indicators above datas
         nrows += sum(len(v) for v in self.dplotsup.values())
+        rowspan = [1 for _ in self.dplotsup.values()] + rowspan
         nrows += sum(len(v) for v in self.dplotsdown.values())
+        rowspan.extend([1 for _ in self.dplotsdown.values()])
 
         self.pinf.nrows = nrows
+        self.pinf.rowspan = rowspan
 
     def wrap_legend_text(self, s):
         n = len(s)

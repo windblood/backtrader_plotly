@@ -67,7 +67,7 @@ class PlotScheme(object):
 
         # How many "subparts" takes a major chart (datas) in the overall chart
         # This is proportional to the total number of subcharts
-        self.rowsmajor = 1
+        self.rowsmajor = 5
 
         # How many "subparts" takes a minor chart (indicators/observers) in the
         # overall chart. This is proportional to the total number of subcharts
